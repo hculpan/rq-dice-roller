@@ -2,6 +2,9 @@ import QtQuick 2.11
 import QtQuick.Window 2.11
 import QtQuick.Controls 2.3
 import QtQuick.Layouts 1.0
+import Qt.labs.handlers 1.0
+import Qt.labs.folderlistmodel 2.11
+import Qt.labs.calendar 1.0
 
 Window {
     visible: true
@@ -50,17 +53,49 @@ Window {
         horizontalAlignment: Text.AlignHCenter
     }
 
+    function calcThreshold() {
+        var threshold = parseInt(skillTextEdit.text);
+        if (radioButtonVeryEasy.checked) {
+            threshold *=2;
+        } else if (radioButtonEasy.checked) {
+            threshold = Math.ceil(threshold * 1.5);
+        } else if (radioButtonHard.checked) {
+            threshold = Math.ceil(threshold * 0.66);
+        } else if (radioButtonFormidable.checked) {
+            threshold = Math.ceil(threshold * 0.5);
+        } else if (radioButtonHerculean.checked) {
+            threshold = Math.ceil(threshold * 0.1);
+        }
+
+        return threshold;
+    }
+
     Connections {
         target: button
         onClicked: {
             textField.clear();
             if (skillTextEdit.text) {
-                var message = "Roll is %1";
                 var roll = Math.floor(Math.random() * 100) + 1;
-                textField.insert(0, message.arg(roll));
+                var threshold = calcThreshold();
+                var critThreshold = Math.ceil(threshold * 0.1);
+                if (roll <= critThreshold) {
+                    canvas.fillStyle = "#42f459"
+                    textField.insert(0, "Critical Success (%1:%2)".arg(roll).arg(threshold));
+                } else if (roll == 99 || roll == 100) {
+                    canvas.fillStyle = "#f42a1f"
+                    textField.insert(0, "Critical Failure (%1:%2)".arg(roll).arg(threshold));
+                } else if (roll <= threshold) {
+                    canvas.fillStyle = "#42f459"
+                    textField.insert(0, "Success (%1:%2)".arg(roll).arg(threshold));
+                } else {
+                    canvas.fillStyle = "#f42a1f"
+                    textField.insert(0, "Failure (%1:%2)".arg(roll).arg(threshold));
+                }
             } else {
                 textField.insert(0, "Error, you idiot!");
             }
+
+            canvas.requestPaint();
         }
     }
 
@@ -209,21 +244,21 @@ Window {
     }
 
     RadioButton {
-        id: radioButton
+        id: radioButtonVeryEasy
         x: 40
         y: 197
         text: qsTr("Very Easy")
     }
 
     RadioButton {
-        id: radioButton1
+        id: radioButtonEasy
         x: 40
         y: 243
         text: qsTr("Easy")
     }
 
     RadioButton {
-        id: radioButton2
+        id: radioButtonStandard
         x: 40
         y: 289
         text: qsTr("Standard")
@@ -231,7 +266,7 @@ Window {
     }
 
     RadioButton {
-        id: radioButton3
+        id: radioButtonHard
         x: 40
         y: 335
         text: qsTr("Hard")
@@ -239,16 +274,53 @@ Window {
     }
 
     RadioButton {
-        id: radioButton4
+        id: radioButtonFormidable
         x: 40
         y: 381
         text: qsTr("Formidable")
     }
 
     RadioButton {
-        id: radioButton5
+        id: radioButtonHerculean
         x: 40
         y: 427
         text: qsTr("Herculean")
+    }
+
+    Item {
+        id: item1
+        x: 167
+        y: 215
+        width: 162
+        height: 241
+
+        Canvas {
+            id: canvas
+            width: 162
+            height: 241
+
+            property color fillStyle : "#ffffff";
+            property string text : "";
+
+            onPaint: {
+                var ctx = getContext("2d");
+                ctx.save();
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.strokeStyle = Qt.darker(fillStyle, 1.4)
+                ctx.lineWidth = 3
+                ctx.fillStyle = canvas.fillStyle;
+//                ctx.globalAlpha = canvas.alpha
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(canvas.width, 0);
+                ctx.lineTo(canvas.width, canvas.height);
+                ctx.lineTo(0, canvas.height);
+                ctx.lineTo(0, 0);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
     }
 }
