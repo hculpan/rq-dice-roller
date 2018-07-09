@@ -8,18 +8,18 @@ import Qt.labs.calendar 1.0
 
 Window {
     visible: true
-    width: 370
-    height: 500
+    width: 275
+    height: 390
     title: qsTr("Runequest Dice Roller")
-    maximumHeight: 480
-    maximumWidth: 640
-    minimumHeight: 480
-    minimumWidth: 640
+    maximumHeight: 390
+    maximumWidth: 370
+    minimumHeight: 390
+    minimumWidth: 370
 
     TextEdit {
         id: skillTextEdit
-        x: 125
-        y: 62
+        x: 137
+        y: 63
         width: 40
         height: 20
         text: qsTr("50")
@@ -29,8 +29,8 @@ Window {
 
     Text {
         id: text1
-        x: 30
-        y: 62
+        x: 42
+        y: 63
         width: 89
         height: 15
         text: qsTr("Skill:")
@@ -40,59 +40,21 @@ Window {
 
     Button {
         id: button
-        x: 135
-        y: 95
+        x: 87
+        y: 142
         text: qsTr("Roll")
-    }
-
-    TextField {
-        id: textField
-        x: 89
-        y: 151
-        text: qsTr("")
-        horizontalAlignment: Text.AlignHCenter
-    }
-
-    function calcThreshold() {
-        var threshold = parseInt(skillTextEdit.text);
-        if (radioButtonVeryEasy.checked) {
-            threshold *=2;
-        } else if (radioButtonEasy.checked) {
-            threshold = Math.ceil(threshold * 1.5);
-        } else if (radioButtonHard.checked) {
-            threshold = Math.ceil(threshold * 0.66);
-        } else if (radioButtonFormidable.checked) {
-            threshold = Math.ceil(threshold * 0.5);
-        } else if (radioButtonHerculean.checked) {
-            threshold = Math.ceil(threshold * 0.1);
-        }
-
-        return threshold;
     }
 
     Connections {
         target: button
         onClicked: {
-            textField.clear();
             if (skillTextEdit.text) {
                 var roll = Math.floor(Math.random() * 100) + 1;
-                var threshold = calcThreshold();
+                var threshold = parseInt(skillTextEdit.text);
                 var critThreshold = Math.ceil(threshold * 0.1);
-                if (roll <= critThreshold) {
-                    canvas.fillStyle = "#42f459"
-                    textField.insert(0, "Critical Success (%1:%2)".arg(roll).arg(threshold));
-                } else if (roll == 99 || roll == 100) {
-                    canvas.fillStyle = "#f42a1f"
-                    textField.insert(0, "Critical Failure (%1:%2)".arg(roll).arg(threshold));
-                } else if (roll <= threshold) {
-                    canvas.fillStyle = "#42f459"
-                    textField.insert(0, "Success (%1:%2)".arg(roll).arg(threshold));
-                } else {
-                    canvas.fillStyle = "#f42a1f"
-                    textField.insert(0, "Failure (%1:%2)".arg(roll).arg(threshold));
-                }
-            } else {
-                textField.insert(0, "Error, you idiot!");
+
+                canvas.roll = roll;
+                canvas.skillLevel = threshold;
             }
 
             canvas.requestPaint();
@@ -121,6 +83,7 @@ Window {
 
         Button {
             id: button75
+            y: 0
             text: qsTr("75")
             Layout.preferredHeight: 25
             Layout.preferredWidth: 34
@@ -139,8 +102,8 @@ Window {
     }
 
     RowLayout {
-        x: 178
-        y: 56
+        x: 60
+        y: 91
 
         Button {
             id: buttonPlus1
@@ -243,48 +206,32 @@ Window {
         }
     }
 
-    RadioButton {
-        id: radioButtonVeryEasy
-        x: 40
-        y: 197
-        text: qsTr("Very Easy")
-    }
+    function writeOutput(roll, threshold, row, ctx, rowName) {
+        var messageLeft;
+        var messageRight = " : %1".arg(rowName)
+        if (roll >= 99) {
+            ctx.fillStyle = "#ba1401";
+            ctx.fillRect(6, (row * 21) + 6, canvas.width - 12, 20)
 
-    RadioButton {
-        id: radioButtonEasy
-        x: 40
-        y: 243
-        text: qsTr("Easy")
-    }
+            ctx.fillStyle = "lightgray";
+            messageLeft = "%1 > %2".arg(roll).arg(threshold);
+        } else if (roll <= threshold) {
+            if (roll <= Math.ceil(threshold * .1)) {
+                ctx.fillStyle = "#89f442";
+                ctx.fillRect(6, (row * 21) + 6, canvas.width - 12, 20)
+            }
 
-    RadioButton {
-        id: radioButtonStandard
-        x: 40
-        y: 289
-        text: qsTr("Standard")
-        checked: true
-    }
-
-    RadioButton {
-        id: radioButtonHard
-        x: 40
-        y: 335
-        text: qsTr("Hard")
-        autoExclusive: true
-    }
-
-    RadioButton {
-        id: radioButtonFormidable
-        x: 40
-        y: 381
-        text: qsTr("Formidable")
-    }
-
-    RadioButton {
-        id: radioButtonHerculean
-        x: 40
-        y: 427
-        text: qsTr("Herculean")
+            ctx.fillStyle = "black";
+            messageLeft = "%1 <= %2".arg(roll).arg(threshold);
+        } else {
+            ctx.fillStyle = "lightgray";
+            messageLeft = "%1 > %2".arg(roll).arg(threshold);
+        }
+        var half = canvas.width / 2;
+        ctx.textAlign = "right";
+        ctx.fillText(messageLeft, half, (row * 21) + 21);
+        ctx.textAlign = "left";
+        ctx.fillText(messageRight, half, (row * 21) + 21);
     }
 
     Item {
@@ -292,24 +239,29 @@ Window {
         x: 167
         y: 215
         width: 162
-        height: 241
+        height: 133
 
         Canvas {
             id: canvas
-            width: 162
-            height: 241
+            width: 207
+            height: 143
 
             property color fillStyle : "#ffffff";
             property string text : "";
+
+            property int roll;
+            property int skillLevel;
+            x: -134
+            y: 0
 
             onPaint: {
                 var ctx = getContext("2d");
                 ctx.save();
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
+
                 ctx.strokeStyle = Qt.darker(fillStyle, 1.4)
-                ctx.lineWidth = 3
+                ctx.lineWidth = 2
                 ctx.fillStyle = canvas.fillStyle;
-//                ctx.globalAlpha = canvas.alpha
                 ctx.beginPath();
                 ctx.moveTo(0, 0);
                 ctx.lineTo(canvas.width, 0);
@@ -317,8 +269,21 @@ Window {
                 ctx.lineTo(0, canvas.height);
                 ctx.lineTo(0, 0);
                 ctx.closePath();
+
                 ctx.fill();
                 ctx.stroke();
+
+                ctx.font = "15pt Arial";
+
+                if (canvas.roll != 0) {
+                    writeOutput(canvas.roll, canvas.skillLevel * 2, 0, ctx, "Very Easy");
+                    writeOutput(canvas.roll, Math.ceil(canvas.skillLevel * 1.5), 1, ctx, "Easy");
+                    writeOutput(canvas.roll, canvas.skillLevel, 2, ctx, "Standard");
+                    writeOutput(canvas.roll, Math.ceil(canvas.skillLevel * .66), 3, ctx, "Hard");
+                    writeOutput(canvas.roll, Math.ceil(canvas.skillLevel * .5), 4, ctx, "Formidable");
+                    writeOutput(canvas.roll, Math.ceil(canvas.skillLevel * .1), 5, ctx, "Herculean");
+                }
+
                 ctx.restore();
             }
         }
